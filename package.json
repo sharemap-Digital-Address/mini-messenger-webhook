@@ -1,13 +1,9 @@
 {
-  "name": "mini-messenger-webhook",
+  "name": "sharemap-messenger-webhook",
   "version": "1.0.0",
-  "description": "Messenger Webhook for ShareMap",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
+  "description": "Messenger Webhook for ShareMap POS & Store",
+  "main": "api/index.js",
   "dependencies": {
-    "body-parser": "^1.20.2",
     "express": "^4.19.2"
   }
 }
