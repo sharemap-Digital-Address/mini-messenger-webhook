@@ -47,19 +47,18 @@ app.post('/webhook', async (req, res) => {
                     const userMessage = webhook_event.message.text.toLowerCase();
                     console.log(`[INCOMING CHAT] Page ID: ${pageId} | Sender: ${sender_psid} | Message: "${userMessage}"`);
 
-                    // Suriin kung ang mensahe ay naglalaman ng kahit alin sa ating trigger keywords
                     const isKeywordMatched = TRIGGER_KEYWORDS.some(keyword => userMessage.includes(keyword));
 
                     if (isKeywordMatched) {
-                        console.log(`🎯 Keyword Matched! Nagpapadala ng SDK Button...`);
+                        console.log(`🎯 Keyword Matched! Kinukuha ang store license details sa Supabase...`);
                         
-                        // Kuhanin ang active token mula sa Supabase
-                        const token = await getStoreAccessToken(pageId);
+                        // Kuhanin ang token at ang tamang username/store page mula sa Supabase
+                        const storeInfo = await getStoreLicenseInfo(pageId);
 
-                        if (token && token !== "OFFLINE_TOKEN_EXPIRED") {
-                            await sendMessengerSdkButton(sender_psid, pageId, token);
+                        if (storeInfo && storeInfo.token && storeInfo.token !== "OFFLINE_TOKEN_EXPIRED") {
+                            await sendMessengerSdkButton(sender_psid, storeInfo.username, storeInfo.token);
                         } else {
-                            console.error(`⚠️ Walang mahanap na active token sa Supabase para sa Page ID: ${pageId}`);
+                            console.error(`⚠️ Walang mahanap na active token o lisensya para sa Page ID: ${pageId}`);
                         }
                     } else {
                         console.log(`ℹ️ Hindi nag-trigger ang button (no order keywords matched).`);
@@ -72,10 +71,10 @@ app.post('/webhook', async (req, res) => {
     return res.sendStatus(404);
 });
 
-// Function para kumuha ng Token mula sa Supabase gamit ang Page ID o Username
-async function getStoreAccessToken(pageId) {
+// Function para kumuha ng Token AT Username galing sa Supabase gamit ang Page ID
+async function getStoreLicenseInfo(pageId) {
     try {
-        // Unang subok: i-match sa page_id (numeric ID)
+        // I-match sa page_id (numeric ID)
         let { data, error } = await supabaseClient
             .from('licenses')
             .select('page_access_token, username')
@@ -83,27 +82,22 @@ async function getStoreAccessToken(pageId) {
             .single();
 
         if (data && data.page_access_token) {
-            return data.page_access_token;
+            return {
+                token: data.page_access_token,
+                username: data.username || 'sharemapdammystore'
+            };
         }
 
-        // Fallback: Kung username lang ang nakatabi
-        const cleanedUsername = String(pageId).replace('@', '').toLowerCase().trim();
-        const { data: userData } = await supabaseClient
-            .from('licenses')
-            .select('page_access_token')
-            .eq('username', cleanedUsername)
-            .single();
-
-        return userData ? userData.page_access_token : null;
+        return null;
     } catch (err) {
         console.error("Error sa pag-lookup sa Supabase:", err);
         return null;
     }
 }
 
-// Function para magpadala ng Official Messenger SDK Button Response
-async function sendMessengerSdkButton(recipientPsid, storeIdentifier, pageAccessToken) {
-    const cleanStorePage = String(storeIdentifier).replace('@', '').toLowerCase().trim();
+// Function para magpadala ng Official Messenger SDK Button Response gamit ang tamang store username
+async function sendMessengerSdkButton(recipientPsid, storeUsername, pageAccessToken) {
+    const cleanStorePage = String(storeUsername).replace('@', '').toLowerCase().trim();
     
     const messageData = {
         recipient: { id: recipientPsid },
@@ -118,7 +112,7 @@ async function sendMessengerSdkButton(recipientPsid, storeIdentifier, pageAccess
                             type: "web_url",
                             url: `https://sharemap-digital-address.github.io/m.me-kiosk-sellerpage/multigateway.html?page=${encodeURIComponent(cleanStorePage)}`,
                             title: "🚀 Open Order Gateway",
-                            messenger_extensions: true, // PINAKA-IMPORTANTE: GAGANA NA ANG SDK!
+                            messenger_extensions: true,
                             webview_height_ratio: "full"
                         }
                     ]
