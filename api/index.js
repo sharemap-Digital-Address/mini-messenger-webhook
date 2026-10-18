@@ -116,7 +116,7 @@ async function getStoreLicenseInfo(pageId) {
     }
 }
 
-// Function para magpadala ng Official Messenger SDK Button Response na may kasamang messenger_extensions
+// Function para magpadala ng Official Messenger Generic Template SDK Button Response
 async function sendMessengerSdkButton(recipientPsid, storeUsername, pageAccessToken) {
     if (!storeUsername) {
         console.error("❌ Hindi maipadala ang SDK button dahil walang store username na nakuha.");
@@ -125,25 +125,31 @@ async function sendMessengerSdkButton(recipientPsid, storeUsername, pageAccessTo
 
     const cleanStorePage = String(storeUsername).replace('@', '').toLowerCase().trim();
     
-    // URL na may kasamang App ID at tamang store page para sa bawat kliyente
-    const buttonUrl = `https://sharemap-digital-address.github.io/m.me-kiosk-sellerpage/multigateway.html?page=${encodeURIComponent(cleanStorePage)}&app_id=2070260990400834`;
+    // URL na may kasamang App ID at messenger_extensions=true parameter
+    const buttonUrl = `https://sharemap-digital-address.github.io/m.me-kiosk-sellerpage/multigateway.html?page=${encodeURIComponent(cleanStorePage)}&app_id=2070260990400834&messenger_extensions=true`;
     console.log(`🔗 GENERATED BUTTON URL: ${buttonUrl}`);
 
+    // GENERIC TEMPLATE PAYLOAD - LIGTAS AT COMPATIBLE SA LAHAT NG MESSENGER APPS
     const messageData = {
         recipient: { id: recipientPsid },
         message: {
             attachment: {
                 type: "template",
                 payload: {
-                    template_type: "button",
-                    text: "Magandang araw! Pindutin ang button sa ibaba para buksan ang iyong Order Gateway:",
-                    buttons: [
+                    template_type: "generic",
+                    elements: [
                         {
-                            type: "web_url",
-                            url: buttonUrl,
-                            title: "🚀 Open Order Gateway",
-                            messenger_extensions: true, // <-- ITO ANG NAG-AALIS NG SDK ERROR!
-                            webview_height_ratio: "full"
+                            title: "📍 ShareMap Order Gateway",
+                            subtitle: "Pindutin ang button sa ibaba para buksan ang Kiosk Gateway:",
+                            buttons: [
+                                {
+                                    type: "web_url",
+                                    url: buttonUrl,
+                                    title: "🚀 Open Order Gateway",
+                                    messenger_extensions: true,
+                                    webview_height_ratio: "full"
+                                }
+                            ]
                         }
                     ]
                 }
