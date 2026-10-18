@@ -82,7 +82,6 @@ async function getStoreLicenseInfo(pageId) {
             .single();
 
         if (data && data.page_access_token) {
-            // Siguraduhing may maibabalik na username, kung wala ay gamitin ang default store
             const storeUsername = (data.username && data.username.trim() !== "") ? data.username : "sharemapdammystore";
             return {
                 token: data.page_access_token,
@@ -100,11 +99,10 @@ async function getStoreLicenseInfo(pageId) {
         if (fallbackData && fallbackData.page_access_token) {
             return {
                 token: fallbackData.page_access_token,
-                username: "sharemapdammystore" // Default safe store page
+                username: "sharemapdammystore"
             };
         }
 
-        // Ultimate fallback para hindi mag-error ang button
         return {
             token: null,
             username: "sharemapdammystore"
@@ -118,11 +116,14 @@ async function getStoreLicenseInfo(pageId) {
     }
 }
 
-// Function para magpadala ng Official Messenger SDK Button Response
+// Function para magpadala ng Official Messenger SDK Button Response at i-log ang link
 async function sendMessengerSdkButton(recipientPsid, storeUsername, pageAccessToken) {
-    // Siguraduhing malinis ang store page string
     const cleanStorePage = String(storeUsername || "sharemapdammystore").replace('@', '').toLowerCase().trim();
     
+    // Bubuuin at ila-log natin ang eksaktong URL dito
+    const buttonUrl = `https://sharemap-digital-address.github.io/m.me-kiosk-sellerpage/multigateway.html?page=${encodeURIComponent(cleanStorePage)}`;
+    console.log(`🔗 GENERATED BUTTON URL: ${buttonUrl}`);
+
     const messageData = {
         recipient: { id: recipientPsid },
         message: {
@@ -134,7 +135,7 @@ async function sendMessengerSdkButton(recipientPsid, storeUsername, pageAccessTo
                     buttons: [
                         {
                             type: "web_url",
-                            url: `https://sharemap-digital-address.github.io/m.me-kiosk-sellerpage/multigateway.html?page=${encodeURIComponent(cleanStorePage)}`,
+                            url: buttonUrl,
                             title: "🚀 Open Order Gateway",
                             messenger_extensions: true,
                             webview_height_ratio: "full"
