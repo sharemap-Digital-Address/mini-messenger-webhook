@@ -71,7 +71,7 @@ app.post('/webhook', async (req, res) => {
     return res.sendStatus(404);
 });
 
-// Function para kumuha ng Token AT Username galing sa Supabase gamit ang Page ID
+// Function para kumuha ng Token AT Username galing sa Supabase (Dynamic para sa iba't ibang kliyente)
 async function getStoreLicenseInfo(pageId) {
     try {
         // I-match sa page_id (numeric ID)
@@ -81,47 +81,52 @@ async function getStoreLicenseInfo(pageId) {
             .eq('page_id', pageId)
             .single();
 
-        if (data && data.page_access_token) {
-            const storeUsername = (data.username && data.username.trim() !== "") ? data.username : "sharemapdammystore";
+        if (data && data.page_access_token && data.username) {
             return {
                 token: data.page_access_token,
-                username: storeUsername
+                username: data.username.trim()
             };
         }
 
-        // Fallback Kung Page ID ang nakasulat sa username column
+        // Fallback Kung Page ID ang nakasulat sa username column sa database
         let { data: fallbackData } = await supabaseClient
             .from('licenses')
             .select('page_access_token, username')
             .eq('username', String(pageId))
             .single();
 
-        if (fallbackData && fallbackData.page_access_token) {
+        if (fallbackData && fallbackData.page_access_token && fallbackData.username) {
             return {
                 token: fallbackData.page_access_token,
-                username: "sharemapdammystore"
+                username: fallbackData.username.trim()
             };
         }
 
+        console.error(`⚠️ Walang nahanap na valid username sa Supabase para sa Page ID: ${pageId}`);
         return {
             token: null,
-            username: "sharemapdammystore"
+            username: null
         };
     } catch (err) {
         console.error("Error sa pag-lookup sa Supabase:", err);
         return {
             token: null,
-            username: "sharemapdammystore"
+            username: null
         };
     }
 }
 
-// Function para magpadala ng Official Messenger SDK Button Response at i-log ang link
+// Function para magpadala ng Official Messenger SDK Button Response na may kasamang messenger_extensions
 async function sendMessengerSdkButton(recipientPsid, storeUsername, pageAccessToken) {
-    const cleanStorePage = String(storeUsername || "sharemapdammystore").replace('@', '').toLowerCase().trim();
+    if (!storeUsername) {
+        console.error("❌ Hindi maipadala ang SDK button dahil walang store username na nakuha.");
+        return;
+    }
+
+    const cleanStorePage = String(storeUsername).replace('@', '').toLowerCase().trim();
     
-    // Bubuuin at ila-log natin ang eksaktong URL dito
-    const buttonUrl = `https://sharemap-digital-address.github.io/m.me-kiosk-sellerpage/multigateway.html?page=${encodeURIComponent(cleanStorePage)}`;
+    // URL na may kasamang App ID at tamang store page para sa bawat kliyente
+    const buttonUrl = `https://sharemap-digital-address.github.io/m.me-kiosk-sellerpage/multigateway.html?page=${encodeURIComponent(cleanStorePage)}&app_id=2070260990400834`;
     console.log(`🔗 GENERATED BUTTON URL: ${buttonUrl}`);
 
     const messageData = {
@@ -137,7 +142,7 @@ async function sendMessengerSdkButton(recipientPsid, storeUsername, pageAccessTo
                             type: "web_url",
                             url: buttonUrl,
                             title: "🚀 Open Order Gateway",
-                            messenger_extensions: true,
+                            messenger_extensions: true, // <-- ITO ANG NAG-AALIS NG SDK ERROR!
                             webview_height_ratio: "full"
                         }
                     ]
