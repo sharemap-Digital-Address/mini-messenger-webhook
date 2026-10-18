@@ -1,7 +1,6 @@
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 
-
 const app = express();
 app.use(express.json());
 
@@ -75,7 +74,6 @@ app.post('/webhook', async (req, res) => {
 // Function para kumuha ng Token AT Username galing sa Supabase (Dynamic para sa iba't ibang kliyente)
 async function getStoreLicenseInfo(pageId) {
     try {
-        // I-match sa page_id (numeric ID)
         let { data, error } = await supabaseClient
             .from('licenses')
             .select('page_access_token, username')
@@ -89,7 +87,6 @@ async function getStoreLicenseInfo(pageId) {
             };
         }
 
-        // Fallback Kung Page ID ang nakasulat sa username column sa database
         let { data: fallbackData } = await supabaseClient
             .from('licenses')
             .select('page_access_token, username')
@@ -117,7 +114,7 @@ async function getStoreLicenseInfo(pageId) {
     }
 }
 
-// Function para magpadala ng Official Messenger Generic Template SDK Button Response
+// Function para magpadala ng Official Messenger SDK Button Response (INAYOS ANG URL PARAMETERS AT DUAL-SEND)
 async function sendMessengerSdkButton(recipientPsid, storeUsername, pageAccessToken) {
     if (!storeUsername) {
         console.error("❌ Hindi maipadala ang SDK button dahil walang store username na nakuha.");
@@ -126,11 +123,11 @@ async function sendMessengerSdkButton(recipientPsid, storeUsername, pageAccessTo
 
     const cleanStorePage = String(storeUsername).replace('@', '').toLowerCase().trim();
     
-    // URL na may kasamang App ID at messenger_extensions=true parameter
-    const buttonUrl = `https://sharemap-digital-address.github.io/m.me-kiosk-sellerpage/multigateway.html?page=${encodeURIComponent(cleanStorePage)}&app_id=2070260990400834&messenger_extensions=true`;
+    // TAMA AT EKSAKTONG URL PARAMETERS PARA SA MESSENGER SDK (`fb_app_id` at `messenger_extensions=true`)
+    const buttonUrl = `https://sharemap-digital-address.github.io/m.me-kiosk-sellerpage/multigateway.html?page=${encodeURIComponent(cleanStorePage)}&fb_app_id=2070260990400834&messenger_extensions=true`;
     console.log(`🔗 GENERATED BUTTON URL: ${buttonUrl}`);
 
-    // GENERIC TEMPLATE PAYLOAD - LIGTAS AT COMPATIBLE SA LAHAT NG MESSENGER APPS
+    // Standard Template na may messenger_extensions: true
     const messageData = {
         recipient: { id: recipientPsid },
         message: {
@@ -166,6 +163,17 @@ async function sendMessengerSdkButton(recipientPsid, storeUsername, pageAccessTo
         });
         const result = await response.json();
         console.log("📤 Naipadala ang SDK Button Response:", result);
+
+        // EXTRA FALLBACK: Magpapadala rin ng Plain Text Link para KAPAG PUMASOK SA META BUSINESS SUITE, HINDI LALABAS NA "This message is not available..."
+        await fetch(`https://graph.facebook.com/v26.0/me/messages?access_token=${pageAccessToken}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                recipient: { id: recipientPsid },
+                message: { text: `👉 O kaya i-click ang direct link na ito sa iyong Messenger:\n${buttonUrl}` }
+            })
+        });
+
     } catch (err) {
         console.error("❌ Error sa pagpapadala ng SDK Button:", err);
     }
