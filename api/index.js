@@ -52,7 +52,7 @@ app.post('/webhook', async (req, res) => {
                     if (isKeywordMatched) {
                         console.log(`🎯 Keyword Matched! Kinukuha ang store license details sa Supabase...`);
                         
-                        // Kuhanin ang token at ang tamang username/store page mula sa Supabase
+                        // Kuhanin ang token at ang tamang store username mula sa Supabase
                         const storeInfo = await getStoreLicenseInfo(pageId);
 
                         if (storeInfo && storeInfo.token && storeInfo.token !== "OFFLINE_TOKEN_EXPIRED") {
@@ -82,22 +82,46 @@ async function getStoreLicenseInfo(pageId) {
             .single();
 
         if (data && data.page_access_token) {
+            // Siguraduhing may maibabalik na username, kung wala ay gamitin ang default store
+            const storeUsername = (data.username && data.username.trim() !== "") ? data.username : "sharemapdammystore";
             return {
                 token: data.page_access_token,
-                username: data.username || 'sharemapdammystore'
+                username: storeUsername
             };
         }
 
-        return null;
+        // Fallback Kung Page ID ang nakasulat sa username column
+        let { data: fallbackData } = await supabaseClient
+            .from('licenses')
+            .select('page_access_token, username')
+            .eq('username', String(pageId))
+            .single();
+
+        if (fallbackData && fallbackData.page_access_token) {
+            return {
+                token: fallbackData.page_access_token,
+                username: "sharemapdammystore" // Default safe store page
+            };
+        }
+
+        // Ultimate fallback para hindi mag-error ang button
+        return {
+            token: null,
+            username: "sharemapdammystore"
+        };
     } catch (err) {
         console.error("Error sa pag-lookup sa Supabase:", err);
-        return null;
+        return {
+            token: null,
+            username: "sharemapdammystore"
+        };
     }
 }
 
-// Function para magpadala ng Official Messenger SDK Button Response gamit ang tamang store username
+// Function para magpadala ng Official Messenger SDK Button Response
 async function sendMessengerSdkButton(recipientPsid, storeUsername, pageAccessToken) {
-    const cleanStorePage = String(storeUsername).replace('@', '').toLowerCase().trim();
+    // Siguraduhing malinis ang store page string
+    const cleanStorePage = String(storeUsername || "sharemapdammystore").replace('@', '').toLowerCase().trim();
     
     const messageData = {
         recipient: { id: recipientPsid },
