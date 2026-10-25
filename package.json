@@ -1,0 +1,9 @@
+{
+  "name": "mini-messenger-webhook",
+  "version": "1.0.0",
+  "main": "api/index.js",
+  "dependencies": {
+    "express": "^4.18.2",
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}
